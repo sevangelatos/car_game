@@ -12,23 +12,63 @@ SCREEN_TITLE = "Car Game"
 
 @dataclass
 class CarState(object):
-    yaw: float = 0.
-    x: float = 0.
-    y: float = 0.
+    yaw: float = 0.       # Orientation of vehicle in world (radians)
+    x: float = 0.         # meters
+    y: float = 0.         # meters
     lvel: float = 5.0     # Car linear velocity
-    l_front: float = 1.5  # CoG distance to front wheels
-    l_rear: float = 2.0   # CoG distance to rear wheels
-    yaw_rate: float = 0   # CoG distance to rear wheels
+    # CoG distance to front/rear axle
+    l_front: float = 1.5
+    l_rear: float = 2.0
+    # Vehicle Yaw rate
+    yaw_rate: float = 0
+    # Side slip angle (beta) (Radians)
+    slip_angle: float = 0
+    # Front/Rear axle cornering stiffness. tyre model:(Fy = C*a)
+    C_front: float = 50000
+    C_rear: float = 50000
+    # Moment of inertia around Z (kg*m^2)
+    Iz: float = 900
+    # Vehicle mass (kg)
+    mass: float = 1500
+    # Angle of driving wheels (commanded by driver)
     steering_angle: float = 0.
+
+    # State-space representation:
+    # X : [y, slip_angle, yaw, yaw_rate]
+    # X' = A_lat * X + B_lat*steering_angle
+    A_lat: np.array = None
+    B_lat: np.array = None
+
+    def __post_init__(self):
+        # Just for brevity
+        V = self.lvel
+        Cf = self.C_front
+        Cr = self.C_rear
+        Iz = self.Iz
+        m = self.mass
+        lf = self.l_front
+        lr = self.l_rear
+        self.A_lat = np.float32([
+            [0, self.lvel, self.lvel, 0],
+            [0, -(Cr+Cf)/(m*V), 0, ((Cr*lr - Cf*lf)/(m*V**2)) - 1],
+            [0, 0, 0, 1],
+            [0, (Cr*lr - Cf*lf)/Iz, 0, -(Cr*lr**2 + Cf*lf**2)/(Iz * V)]
+        ])
+
+        self.B_lat = np.float32([0, Cf/(m*V), 0, (Cf*lf)/Iz])
 
     def turn(self, direction):
         self.steering_angle = direction * np.radians(50)
 
     def update(self, dt):
-        self.yaw_rate = self.steering_angle
-        self.yaw += dt * self.yaw_rate
-        self.x += dt*self.lvel * np.cos(self.yaw)
-        self.y += dt*self.lvel * np.sin(self.yaw)
+        X = np.float32((0, self.slip_angle, self.yaw, self.yaw_rate))
+        Xdot = np.matmul(self.A_lat, X) + self.steering_angle * self.B_lat
+        self.slip_angle += dt * Xdot[1]
+        self.yaw += dt * Xdot[2]
+        self.yaw_rate += dt * Xdot[3]
+        motion_dir = self.yaw + self.slip_angle
+        self.x += dt*self.lvel * np.cos(motion_dir)
+        self.y += dt*self.lvel * np.sin(motion_dir)
         # pprint(self)
 
     def center(self):
@@ -112,7 +152,6 @@ class CarGame(arcade.Window):
         self.car.turn(self.steering_sign())
         self.car.update(dt)
         pixels_pos = np.matmul(self.world_to_screen, self.car.center())
-        pprint(pixels_pos)
         self.car_sprite.center_x = pixels_pos[0]
         self.car_sprite.center_y = pixels_pos[1]
         self.car_sprite.radians = self.car.yaw
