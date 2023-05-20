@@ -20,7 +20,17 @@ Uses numpy and the [arcade game engine]([url](https://github.com/pythonarcade/ar
 # Installation/execution
 
 ```bash
+# Get the source
+git clone https://github.com/sevangelatos/car_game.git
+
 # Install pipenv if not already installed
 python3 -m pip install --user pipenv
 
+# Jump in the repository and initialize virtualenv
+cd car_game
+pipenv install
+
+# Activate virtualenv and run game
+pipenv shell
+python car_game.py 
 ```
