@@ -15,7 +15,7 @@ class CarState(object):
     yaw: float = 0.       # Orientation of vehicle in world (radians)
     x: float = 0.         # meters
     y: float = 0.         # meters
-    lvel: float = 5.0     # Car linear velocity
+    lvel: float = 15.0     # Car linear velocity
     # CoG distance to front/rear axle
     l_front: float = 1.5
     l_rear: float = 2.0
@@ -24,8 +24,8 @@ class CarState(object):
     # Side slip angle (beta) (Radians)
     slip_angle: float = 0
     # Front/Rear axle cornering stiffness. tyre model:(Fy = C*a)
-    C_front: float = 50000
-    C_rear: float = 50000
+    C_front: float = 10000
+    C_rear: float = 10000
     # Moment of inertia around Z (kg*m^2)
     Iz: float = 900
     # Vehicle mass (kg)
